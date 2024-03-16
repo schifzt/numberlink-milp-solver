@@ -1,6 +1,6 @@
 # optimal-connect-points
 
-<pre style="word-wrap: break-word !important; white-space: pre-wrap !important;">
+```text
 ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓
 ┃   │ ┏━━━━━━━3 │   │   │   ┃
 ┣───┼─┃─┼───┼───┼───┼───┼───┫
@@ -16,7 +16,7 @@
 ┣───┼───┼───┼───┼───┼─┃─┼───┫
 ┃   │   │   │ 3━━━━━━━┛ │   ┃
 ┗━━━┻━━━┻━━━┻━━━┻━━━┻━━━┻━━━┛
-</pre>
+```
 
 ## Integer Programming formulation
 
