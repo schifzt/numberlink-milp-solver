@@ -1,6 +1,6 @@
 # optimal-connect-points
 
-<pre style="word-wrap: break-word; white-space: pre-wrap;">
+<pre style="word-wrap: break-word !important; white-space: pre-wrap !important;">
 ┏━━━┳━━━┳━━━┳━━━┳━━━┳━━━┳━━━┓
 ┃   │ ┏━━━━━━━3 │   │   │   ┃
 ┣───┼─┃─┼───┼───┼───┼───┼───┫
