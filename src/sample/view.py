@@ -1,6 +1,9 @@
 import numpy as np
 
-def asciify(board_org: np.array):
+def asciify(board_org: np.array) -> str:
+    if board_org is None:
+        return ""
+
     I,J = board_org.shape
 
     ascii_board_4d: np.ndarray = np.full(board_org.shape, '', dtype=object)
@@ -10,32 +13,50 @@ def asciify(board_org: np.array):
 
             v = board_org[i,j]
 
-            # check adjacency
-            adj_top, adj_bottom, adj_left, adj_right = False, False, False, False
-            try:
-                adj_top = (0 < i) and (board_org[i-1,j] == v) and (v > 0)
-                adj_bottom = (i < I-1) and (board_org[i+1,j] == v) and (v > 0)
-                adj_left = (0 < j) and (board_org[i,j-1] == v) and (v > 0)
-                adj_right = (j < J-1) and (board_org[i,j+1] == v) and (v > 0)
-            except:
-                pass
+            if v == 0:
+                # vacancy cell
+                t, b, l, r = '─', '─', '│', '│'
+                cl, cr, c  = ' ', ' ', ' '
+            elif v > 0:
+                # check adjacency
+                try: adj_top = (0 < i) and (board_org[i-1,j] == v)
+                except: adj_top = False
+                try: adj_bottom = (i < I-1) and (board_org[i+1,j] == v)
+                except: adj_bottom = False
+                try: adj_left = (0 < j) and (board_org[i,j-1] == v)
+                except: adj_left = False
+                try: adj_right = (j < J-1) and (board_org[i,j+1] == v)
+                except: adj_right = False
 
-            t = '┃' if adj_top else '─'
-            b = '┃' if adj_bottom else '─'
-            l = '━' if adj_left else '│'
-            r = '━' if adj_right else '│'
+                n_adjcent = int(adj_top) + int(adj_bottom) + int(adj_left) + int(adj_right)
 
-            cl = '━' if adj_left else ' '
-            cr = '━' if adj_right else ' '
+                t = '┃' if adj_top else '─'
+                b = '┃' if adj_bottom else '─'
+                l = '━' if adj_left else '│'
+                r = '━' if adj_right else '│'
 
-            c = f'{v}'
-            if (not adj_top) and (not adj_bottom) and (not adj_left) and (not adj_right): c = ' '
-            elif adj_top & adj_bottom: c = '┃'
-            elif adj_top & adj_left: c = '┛'
-            elif adj_top & adj_right: c = '┗'
-            elif adj_left & adj_right: c = '━'
-            elif adj_bottom & adj_left: c = '┓'
-            elif adj_bottom & adj_right: c = '┏'
+                cl = '━' if adj_left else ' '
+                cr = '━' if adj_right else ' '
+
+                c = ' '
+                # 4-adjcent
+                if n_adjcent == 4: c = '╋'
+                # 3-adjcent
+                elif adj_top & adj_bottom & adj_left: c = '┫'
+                elif adj_top & adj_bottom & adj_right: c = '┣'
+                elif adj_top & adj_left & adj_right: c = '┻'
+                elif adj_bottom & adj_left & adj_right: c = '┳'
+                # 2-adjcent
+                elif adj_top & adj_bottom: c = '┃'
+                elif adj_top & adj_left: c = '┛'
+                elif adj_top & adj_right: c = '┗'
+                elif adj_left & adj_right: c = '━'
+                elif adj_bottom & adj_left: c = '┓'
+                elif adj_bottom & adj_right: c = '┏'
+                # 1-adjcent
+                elif n_adjcent == 1: c = f'{v}'
+                # 0-adjcent
+                elif n_adjcent == 0: c = f'{v}'
 
             # default
             ascii_board_4d[(i,j)] = np.array([
