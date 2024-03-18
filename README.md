@@ -1,5 +1,5 @@
 # optimal-connect-points
-minimize or maximize a path lengh which connect points with same number
+optimize a total lengh of paths connecting points with the same number.
 
 ```text
 minimize path length              maximize path length
