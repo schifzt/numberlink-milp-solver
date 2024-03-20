@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 
-def create_mip_model(board_org: np.ndarray) -> object:
+def create_mip_model(board_org: np.ndarray, sense: str) -> mip.Model:
     I,J = board_org.shape
     N = np.max(board_org)
 
@@ -16,22 +16,24 @@ def create_mip_model(board_org: np.ndarray) -> object:
     working_board = np.insert(working_board, [0, J], np.full((I,1), -2), axis=1)
     working_board = np.insert(working_board, [0, I], np.full(J+2, -2), axis=0)
 
-    print(board_org)
-    print(working_board)
-
-    model = Model(sense=MINIMIZE, solver_name=CBC)
+    if sense in ["minimize", "minimise"]:
+        model = Model(sense=MINIMIZE, solver_name=CBC)
+    elif sense in ["maximize", "maximise"]:
+        model = Model(sense=MAXIMIZE, solver_name=CBC)
+    else:
+        model = None
 
     # define variables
     x = {}
-    n_adjacent = {}
+    d = {}
     for i in range(I+2):
         for j in range(J+2):
             for n in range(1,N+1):
                 x[f"x_{i}_{j}_{n}"] = model.add_var(var_type=BINARY, name=f"x_{i}_{j}_{n}")
-                n_adjacent[f"n_adjacent_{i}_{j}_{n}"] = model.add_var(var_type=INTEGER, name=f"n_adjacent_{i}_{j}_{n}")
+                d[f"d_{i}_{j}_{n}"] = model.add_var(var_type=INTEGER, name=f"d_{i}_{j}_{n}")
 
 
-    # define constraints & objective
+    # define constraints
     for i in range(I+2):
         for j in range(J+2):
             v = working_board[(i,j)]
@@ -42,13 +44,13 @@ def create_mip_model(board_org: np.ndarray) -> object:
                 # C1: if a point (i,j) is a sentinel point, x_{i,j,n}=0
                 for n in range(1,N+1):
                     model.add_constr(x[f"x_{i}_{j}_{n}"] == 0, f"c1_{i}_{j}_{n}")
-                    # model.add_constr(n_adjacent[f"n_adjacent_{i}_{j}_{n}"] == 0, f"adj_{i}_{j}_{n}")
+                    # model.add_constr(d[f"d_{i}_{j}_{n}"] == 0)
             else:
                 # (i,j) on a board
 
                 # C2: define n_adjacent
                 for n in range(1,N+1):
-                    model.add_constr(n_adjacent[f"n_adjacent_{i}_{j}_{n}"] == x[f"x_{i-1}_{j}_{n}"] + x[f"x_{i+1}_{j}_{n}"] + x[f"x_{i}_{j-1}_{n}"] + x[f"x_{i}_{j+1}_{n}"], f"c2_{i}_{j}_{n}")
+                    model.add_constr(d[f"d_{i}_{j}_{n}"] == x[f"x_{i-1}_{j}_{n}"] + x[f"x_{i+1}_{j}_{n}"] + x[f"x_{i}_{j-1}_{n}"] + x[f"x_{i}_{j+1}_{n}"], f"c2_{i}_{j}_{n}")
 
                 # C3: For all points (i,j) on a board, $\sum_n x_{i,j,n} <= 1$
                 model.add_constr(xsum(x[f"x_{i}_{j}_{n}"] for n in range(1,N+1)) <= 1, f"c3_{i}_{j}_{n}")
@@ -59,33 +61,34 @@ def create_mip_model(board_org: np.ndarray) -> object:
                     # C4: if a point (i,j) is a n-th start/end point, x_{i,j,n}=1
                     model.add_constr(x[f"x_{i}_{j}_{n}"] == 1, f"c4_{i}_{j}_{n}")
 
-                    # C5: if a point $(i,j)$ is a $n$-th start/end point, n_adjacent_{i,j,n}=1
-                    model.add_constr(n_adjacent[f"n_adjacent_{i}_{j}_{n}"] == 1, f"c5_{i}_{j}_{n}")
+                    # C5: if a point $(i,j)$ is a $n$-th start/end point, a_{i,j,n}=1
+                    model.add_constr(d[f"d_{i}_{j}_{n}"] == 1, f"c5_{i}_{j}_{n}")
 
                 elif v == -1:
                     # (i,j) is a path candidate point
 
-                    # C6: For all paths and points(i,j) on a candidate points, x_{i,j,n}=1 implies n_adjacent_{i,j,n}=2
+                    # C6: For all paths and points(i,j) on a candidate points, x_{i,j,n}=1 implies a_{i,j,n}=2
                     for n in range(1,N+1):
-                        # For all paths and points(i,j) on a candidate points, 2*x_{i,j,n} <= n_adjacent_{i,j,n}.
-                        model.add_constr(2*x[f"x_{i}_{j}_{n}"] <= n_adjacent[f"n_adjacent_{i}_{j}_{n}"], f"c6#1_{i}_{j}_{n}")
+                        # For all paths and points(i,j) on a candidate points, 2*x_{i,j,n} <= a_{i,j,n}.
+                        model.add_constr(2*x[f"x_{i}_{j}_{n}"] <= d[f"d_{i}_{j}_{n}"], f"c6#1_{i}_{j}_{n}")
 
-                        # For all paths and points(i,j) on a candidate points, n_adjacent_{i,j,n} <= 4-2*x_{i,j,n}.
-                        model.add_constr(n_adjacent[f"n_adjacent_{i}_{j}_{n}"] <= 4 - 2*x[f"x_{i}_{j}_{n}"], f"c6#2_{i}_{j}_{n}")
+                        # For all paths and points(i,j) on a candidate points, a_{i,j,n} <= 4-2*x_{i,j,n}.
+                        model.add_constr(d[f"d_{i}_{j}_{n}"] <= 4 - 2*x[f"x_{i}_{j}_{n}"], f"c6#2_{i}_{j}_{n}")
 
-    # model.objective = minimize(xsum(x[f"x_{i}_{j}_{n}"] for i in range(1,I+1) for j in range(1,J+1) for n in range(1,N+1)))
-    model.objective = maximize(xsum(x[f"x_{i}_{j}_{n}"] for i in range(1,I+1) for j in range(1,J+1) for n in range(1,N+1)))
+
+    # define objective
+    model.objective =xsum(x[f"x_{i}_{j}_{n}"] for i in range(1,I+1) for j in range(1,J+1) for n in range(1,N+1))
 
     model.write("model.lp")
 
     return model
 
 
-def solve(board_org: np.ndarray) -> Optional[np.ndarray]:
+def solve(board_org: np.ndarray, sense: str="minimize") -> Optional[np.ndarray]:
     I,J = board_org.shape
     N = np.max(board_org)
 
-    model = create_mip_model(board_org)
+    model = create_mip_model(board_org, sense)
     status = model.optimize()
     # print(model.search_progress_log.write("model.plog"))
 
@@ -109,7 +112,7 @@ def solve(board_org: np.ndarray) -> Optional[np.ndarray]:
                     elif len(n_candidate) == 1:
                         n = n_candidate[0]
                     else:
-                        print("constraint is not satisfied for some reason.")
+                        print("constraint C3 is not satisfied.")
                         sys.exit(1)
 
                     answer_board[i-1,j-1] = n
@@ -118,9 +121,9 @@ def solve(board_org: np.ndarray) -> Optional[np.ndarray]:
         for i in range(I+2):
             for j in range(J+2):
                 for n in range(1,N+1):
-                    n_adjacent = int(model.vars[f"n_adjacent_{i}_{j}_{n}"].x)
-                    if n_adjacent > 0:
-                        print(f"({i},{j}) -> {n_adjacent}")
+                    d = int(model.vars[f"d_{i}_{j}_{n}"].x)
+                    if d > 0:
+                        print(f"({i},{j}) -> {d}")
 
         print(debug_board)
         return answer_board
