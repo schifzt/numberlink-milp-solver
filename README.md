@@ -1,5 +1,7 @@
-# optimal-connect-points
-optimize a total lengh of non-crossing paths which connect each pair of points with the same number.
+# numberlink-IP-solve
+
+## How to solve
+Optimize a total lengh of non-crossing paths which connect each pair of points with the same number, by Integer Programming (IP) solver.
 
 ```text
 minimize path length                   maximize path length
